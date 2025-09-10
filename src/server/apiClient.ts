@@ -283,12 +283,13 @@ export class ApiClient {
         }
     }
 
-    public async createAgent(provider: string, model?: string, version?: string): Promise<any> {
-        this.logger.info(`Updating agent provider/model with: provider=${provider}, model=${model || "default"}, version=${version || "default"}`);
+    public async updateAgentProvider(provider: string, model?: string, version?: string, sessionId?: string): Promise<any> {
+        this.logger.info(`Updating agent provider/model with: provider=${provider}, model=${model || "default"}, version=${version || "default"}, session: ${sessionId || "new"}`);
         const path = '/agent/update_provider'; // Correct endpoint from main branch
-        const body: { provider: string; model?: string; version?: string } = { provider };
+        const body: { provider: string; model?: string; version?: string; session_id?: string } = { provider };
         if (model) { body.model = model; }
-        if (version) { body.version = version; } // Keep version for now
+        if (version) { body.version = version; }
+        if (sessionId) { body.session_id = sessionId; } // Add session_id from parameter
 
         const options: RequestInit = {
             method: 'POST',
@@ -321,12 +322,30 @@ export class ApiClient {
         }
     }
 
-    public async setAgentPrompt(prompt: string): Promise<any> {
-        this.logger.info(`Setting agent system prompt...`); 
-        const path = '/agent/prompt';
-        const trimmedPrompt = prompt.trim(); // Task 4.2: Trim the prompt
+    public async startAgent(workingDir: string): Promise<{ session_id: string }> {
+        this.logger.info(`Starting agent with working directory: ${workingDir}`);
+        const path = '/agent/start';
+        const options: RequestInit = {
+            method: 'POST',
+            body: JSON.stringify({ working_dir: workingDir })
+        };
 
-        // Task 4.3: Prevent empty system prompt configuration
+        try {
+            const response = await this.request(path, options);
+            const responseData = await response.json();
+            this.logger.info(`Agent started successfully. Session ID: ${responseData.session_id}`);
+            return { session_id: responseData.session_id };
+        } catch (error) {
+            this.logger.error(`Failed to start agent:`, error);
+            throw error;
+        }
+    }
+
+    public async setAgentPrompt(prompt: string, sessionId: string): Promise<any> {
+        this.logger.info(`Setting agent system prompt for session ${sessionId}...`); 
+        const path = '/agent/prompt';
+        const trimmedPrompt = prompt.trim();
+
         if (trimmedPrompt === '') {
             this.logger.info('Trimmed system prompt is empty. Skipping API call to /agent/prompt.');
             return Promise.resolve(undefined);
@@ -334,7 +353,7 @@ export class ApiClient {
 
         const options: RequestInit = {
             method: 'POST',
-            body: JSON.stringify({ extension: trimmedPrompt }) // Use trimmedPrompt
+            body: JSON.stringify({ extension: trimmedPrompt, session_id: sessionId }) // Include session_id
         };
         try {
             const response = await this.request(path, options);

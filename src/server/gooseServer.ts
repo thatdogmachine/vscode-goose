@@ -52,24 +52,28 @@ export const findAvailablePort = (): Promise<number> => {
 // Check if goosed server is ready by polling the status endpoint
 export const checkServerStatus = async (
     port: number,
-    maxAttempts: number = 60,
-    interval: number = 100
+    secretKey: string, // Add secretKey parameter
+    maxAttempts: number = 120,
+    interval: number = 500
 ): Promise<boolean> => {
     const statusUrl = `http://127.0.0.1:${port}/status`;
     logger.info(`Checking server status at ${statusUrl}`);
 
+    const headers = {
+        "X-Secret-Key": secretKey,
+    };
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            const response = await fetch(statusUrl);
+            const response = await fetch(statusUrl, { headers }); // Include headers
             if (response.ok) {
                 logger.info(`Server is ready after ${attempt} attempts`);
                 return true;
+            } else {
+                logger.error(`Attempt ${attempt}/${maxAttempts}: Server status check failed with status ${response.status} ${response.statusText}`);
             }
         } catch (error) {
-            // Expected error when server isn't ready yet
-            if (attempt === maxAttempts) {
-                logger.error(`Server failed to respond after ${maxAttempts} attempts:`, error);
-            }
+            logger.error(`Attempt ${attempt}/${maxAttempts}: Server failed to respond:`, error);
         }
         await new Promise((resolve) => setTimeout(resolve, interval));
     }
@@ -209,11 +213,17 @@ export const startGoosed = async (
     }
 
     goosedProcess.stdout?.on('data', (data: Buffer) => {
-        logger.info(`goosed stdout for port ${port} and dir ${workingDir}: ${data.toString()}`);
+        const output = data.toString().trim();
+        if (output) {
+            logger.info(`goosed stdout [port ${port}, dir ${workingDir}]: ${output}`);
+        }
     });
 
     goosedProcess.stderr?.on('data', (data: Buffer) => {
-        logger.error(`goosed stderr for port ${port} and dir ${workingDir}: ${data.toString()}`);
+        const output = data.toString().trim();
+        if (output) {
+            logger.error(`goosed stderr [port ${port}, dir ${workingDir}]: ${output}`);
+        }
     });
 
     goosedProcess.on('close', (code: number | null) => {
@@ -226,7 +236,7 @@ export const startGoosed = async (
     });
 
     // Wait for the server to be ready
-    const isReady = await checkServerStatus(port);
+    const isReady = await checkServerStatus(port, secretKey);
     logger.info(`Goosed isReady ${isReady}`);
     if (!isReady) {
         logger.error(`Goosed server failed to start on port ${port}`);

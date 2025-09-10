@@ -54,7 +54,7 @@ suite('ApiClient Tests', () => { // Changed describe to suite
                 headers: new Headers(), // Add headers stub
             });
 
-            const result = await apiClient.setAgentPrompt(promptText);
+            const result = await apiClient.setAgentPrompt(promptText, "test-session-id");
 
             assert.ok(mockFetch.calledOnce, 'fetch should be called once');
             const [url, options] = mockFetch.getCall(0).args;
@@ -80,7 +80,7 @@ suite('ApiClient Tests', () => { // Changed describe to suite
                 headers: new Headers(),
             });
 
-            await apiClient.setAgentPrompt(inputPrompt);
+            await apiClient.setAgentPrompt(inputPrompt, "test-session-id");
 
             assert.ok(mockFetch.calledOnce, 'fetch should be called once');
             const [, options] = mockFetch.getCall(0).args;
@@ -90,7 +90,7 @@ suite('ApiClient Tests', () => { // Changed describe to suite
 
         test('should skip API call for an empty string prompt', async () => {
             const inputPrompt = '';
-            const result = await apiClient.setAgentPrompt(inputPrompt);
+            const result = await apiClient.setAgentPrompt(inputPrompt, "test-session-id");
 
             assert.strictEqual(mockFetch.notCalled, true, 'fetch should not be called for empty prompt');
             assert.strictEqual(result, undefined, 'Should return undefined for skipped call');
@@ -100,7 +100,7 @@ suite('ApiClient Tests', () => { // Changed describe to suite
 
         test('should skip API call for a whitespace-only prompt', async () => {
             const inputPrompt = '   '; // Whitespace only
-            const result = await apiClient.setAgentPrompt(inputPrompt);
+            const result = await apiClient.setAgentPrompt(inputPrompt, "test-session-id");
 
             assert.strictEqual(mockFetch.notCalled, true, 'fetch should not be called for whitespace-only prompt');
             assert.strictEqual(result, undefined, 'Should return undefined for skipped call');
@@ -128,7 +128,7 @@ suite('ApiClient Tests', () => { // Changed describe to suite
 
             await assert.rejects(
                 async () => {
-                    await apiClient.setAgentPrompt(promptText);
+                    await apiClient.setAgentPrompt(promptText, "test-session-id");
                 },
                 (error: any) => {
                     assert.ok(mockFetch.calledOnce, 'fetch should be called once on error');
